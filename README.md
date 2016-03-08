@@ -19,6 +19,7 @@ source <path to up script>
 ```
 
 Example Usage:
+--------------
 
 The following will cd into the first matching parent directory called home
 ```sh
@@ -35,7 +36,7 @@ The following will cd into the first directory on your current path
 up 0
 ```
 
-The up command is graceful should the indexes exceed the numbe of directories in the path.  However to perform strict error checking use
+The up command is graceful should the indexes exceed the number of directories in the path.  However to perform strict error checking use
 ```sh
 up --strict -32           # -relative index of -32 should be out of bounds
 up --strict 48            # Fixed index of 48 should be again, out of bounds
@@ -44,6 +45,11 @@ up --strict 48            # Fixed index of 48 should be again, out of bounds
 Your current working path might have been the result of following symbolic links, the following will print your current path
 ```sh
 up --verbose .
+```
+
+Paths will always be printed using the verbose argument
+```sh
+up --verbose home
 ```
 
 The following will traverse your physical path rather than logical / symbolically linked path
