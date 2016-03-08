@@ -1,0 +1,292 @@
+#!/bin/sh
+#----------------------------------------------------------------------------------------------------
+##
+## Author:      Philip Bowditch
+##
+## Description: A reverse "cd" command, intended to navigate up a directory path.  Will work with
+##              indexes or search the path for the first folder name match before setting it as 
+##              the current directory.
+##
+## Usage:       up <options> <index>           - If negative, traverses upwards with a relative index else fixed
+##              up <options> <folder_name>     - Traverses upwards matching on folder name
+##              up ( -v | --version )          - Prints the version number of this utility
+##              up ( -h | --help    )          - Prints the usage 
+##
+##              Where options is zero or more of the following:
+##
+##                  ( -I | --stdin    )        - Read target directory from stdin not program arguments
+##                  ( -L | --logical  )        - Mainly for printing and for traversing folder names, uses logical paths
+##                  ( -P | --physical )        - Mainly for printing and for traversing folder names, uses physical paths not symbolic links
+##                  ( -S | --strict   )        - Ensures an error if indexes go beyond the bounds of the path
+##                  ( -V | --verbose  )        - Prints out the path on successful change
+##                  --                         - Treat all subsequent arguments as the target index / folder name                
+##
+## Dependencues:   Where possible dependencies have been minimised to absolute essentials however the following executables are required:
+##
+##                   Posix Compliant Shell (bash, ksh, zsh etc) 
+##                   printf
+##                   tr
+##                   dirname
+##                   basename
+##                   wc
+##                   cat
+##
+## Change History
+## --------------
+## 2016/03/07    - P Bowditch - Initial Version
+##
+#----------------------------------------------------------------------------------------------------
+
+up()
+{
+    CURRENT_DIR="$PWD"
+    USE_PHYSICAL=false
+    VERBOSE=false
+    STRICT=false
+    USE_STDIN=false
+
+    while [[ $# -gt 0 ]]; do
+
+        case "$1" in
+
+            -L | --logical  ) shift
+                              ;;
+            -P | --physical ) USE_PHYSICAL=true
+                              shift
+                              ;;
+            -S | --strict   ) STRICT=true
+                              shift
+                              ;;
+            -V | --verbose  ) VERBOSE=true
+                              shift
+                              ;;
+            -v | --version  ) printf "%s\n" "1.0.0"
+                              shift
+                              return 0
+                              ;;
+            -I | --stdin    ) USE_STDIN=true
+                              shift
+                              ;;
+            -h | --help     ) cat <<EOF
+ Usage:  up <options> <relative_index>  - Traverses upwards with a relative index
+         up <options> <folder_name>     - Traverses upwards matching on folder name
+         up ( -v | --version )          - Prints the version number of this utility
+         up ( -h | --help    )          - Prints the usage 
+
+         Where options is zero or more of the following:
+
+             ( -I | --stdin    )        - Read target directory from stdin not program arguments
+             ( -L | --logical  )        - Mainly for printing and for traversing folder names, uses logical paths
+             ( -P | --physical )        - Mainly for printing and for traversing folder names, uses physical paths not symbolic links
+             ( -S | --strict   )        - Ensures an error if indexes go beyond the bounds of the path
+             ( -V | --verbose  )        - Prints out the path on successful change
+             --                         - Treat all subsequent arguments as the target index / folder name       
+EOF
+                              shift
+                              return 0
+                              ;;
+            --              ) shift
+                              break
+                              ;;
+            *               ) break
+                              ;;
+
+        esac
+
+    done
+
+    TARGET="$1"
+    [[ "$USE_STDIN" == "true" ]] && read TARGET
+
+    # Traverse by the real path, not symbolic links etc
+    [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+
+    # Handle `up` simply running on its own
+    if [[ -z "$TARGET" ]]; then
+        cd >/dev/null 2>&1
+        RC=$?
+
+        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[Cannot access home directory]" >&2
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return $RC
+    fi
+
+    # Handle special case characters
+    if [[ "$TARGET" == ".." ]]; then
+        cd .. >/dev/null 2>&1
+        RC=$?
+
+        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[Cannot access parent directory]" >&2
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return $RC
+    fi
+
+    # Print where we are if using `up .` - the equivalent of a do nothing, useful to print out physical path e.g. up -P .
+    if [[ "$TARGET" == "." || "$TARGET" == "$CURRENT_DIR" || "$TARGET" == "$PWD" ]]; then
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return 0
+    fi
+
+    # Check if they gave a full path
+    if [[ -d "$TARGET" ]]; then
+        cd "$TARGET" >/dev/null 2>&1
+        RC=$?
+
+        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[No such directory found or permissions are invalid]" >&2
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return $RC
+    fi
+
+    # Special case for home directory
+    if [[ "$TARGET" == "~" ]]; then
+        cd ~ >/dev/null 2>&1
+        RC=$?
+
+        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[No home directory found or ~ is invalid]" >&2
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return $RC
+    fi
+
+    # Special case for previous directory
+    if [[ "$TARGET" == "-" ]]; then
+        cd - >/dev/null 2>&1
+        RC=$?
+
+        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[No previous directory found or - is invalid]" >&2
+
+        if [[ "$VERBOSE" == "true" ]]; then
+            CURRENT_DIR="$PWD"
+            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+            printf "%s\n" "$CURRENT_DIR"
+        fi
+
+        return $RC
+    fi
+
+    # Not sure if there is an easier posix way to do this, but we need to determine if its a relative
+    # index we are using or a named directory to search for 
+    # Should also perform better regex matching as characters could appear in the names themselves
+    # e.g. up  01-02 could be seen as a relative index
+    IS_NONNUM=$(printf "%s\n" "$TARGET" | tr -d '[0-9]' 2>/dev/null)
+
+
+    if [[ -z "$IS_NONNUM" ]]; then
+
+        # Fixed index
+
+        FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
+
+        if [[ "$STRICT" == "true" ]]; then
+
+            if [[ "$TARGET" -gt "$FOLDER_COUNT" ]]; then
+                printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[Fixed index is greater or equal to the current path depth]" >&2
+                return 2
+            fi
+        fi
+
+        # Convert fixed to relative
+
+        TARGET=$(( FOLDER_COUNT - TARGET ))
+
+    elif [[ "$TARGET" == "$IS_NONNUM" || "$IS_NONNUM" != "-" ]]; then
+
+        # Named
+
+        COUNTER=0
+        PARENT_PATH=$(dirname "$CURRENT_DIR" 2>/dev/null)
+        PARENT_NAME=$(basename "$CURRENT_DIR" 2>/dev/null)
+
+        while true; do
+
+            PARENT_NAME=$(basename "$PARENT_PATH" 2>/dev/null)
+            PARENT_PATH=$(dirname "$PARENT_PATH" 2>/dev/null)
+            COUNTER=$(( COUNTER + 1 ))
+
+            # Check if we have found it, or we cannot go any further
+            [[ "$PARENT_NAME" == "$TARGET" || "$PARENT_PATH" == "/" ]] && break
+
+        done
+
+        # Found it ?
+        if [[ "$PARENT_NAME" != "$TARGET" ]]; then
+            printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[No such file or directory]" >&2
+            return 1
+        fi
+
+        TARGET="$COUNTER"
+
+    else
+
+        # Relative index
+
+        TARGET=$(printf "%s\n" "$TARGET" | tr -d '-' 2>/dev/null)
+
+        if [[ "$STRICT" == "true" ]]; then
+
+            FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
+            TMP_TARGET=$(( FOLDER_COUNT - TARGET ))
+
+            if [[ "$TMP_TARGET" -lt 0 || "$TMP_TARGET" -gt "$FOLDER_COUNT" ]]; then
+                printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[Relative index is greater or equal to the current path depth]" >&2
+                return 2
+            fi
+        fi
+
+    fi
+
+
+    CMD=""
+    COUNTER=0
+
+    # Construct the command to move
+    while [[ "$COUNTER" -lt "$TARGET" ]]; do
+
+        CMD="../$CMD"
+        COUNTER=$(( COUNTER + 1 ))
+
+    done
+
+    # Move
+    RC=0
+    [[ -n "$CMD" ]] && cd $CMD >/dev/null 2>&1
+
+    RC=$?
+    if [[ $RC -eq 0 && "$VERBOSE" == "true" ]]; then
+        CURRENT_DIR="$PWD"
+        [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
+
+        printf "%s\n" "$CURRENT_DIR"
+    fi
+
+    return $RC
+}
