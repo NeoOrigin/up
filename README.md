@@ -31,9 +31,14 @@ The following will cd into the parent directory using a relative index
 up -1
 ```
 
-The following will cd into the first directory on your current path
+The following will cd into the root directory /
 ```sh
 up 0
+```
+
+The following will cd into the first directory on your current path
+```sh
+up 1
 ```
 
 The up command is graceful should the indexes exceed the number of directories in the path.  However to perform strict error checking use
@@ -64,7 +69,7 @@ echo /export/home/myuser/projects | up --stdin
 
 Many of the traditional shortcuts employed by the shell / cd are also supported
 ```sh
-up -                                # cd into your previous directory
+up -                                # Cd into your previous directory
 up ~                                # Cd to your home directory
 up                                  # Cd to your home directory
 ```
