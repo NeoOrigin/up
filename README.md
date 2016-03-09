@@ -69,6 +69,13 @@ up ~                                # Cd to your home directory
 up                                  # Cd to your home directory
 ```
 
+Specifying any number of dots as the target will move you up to that directory (following UNIX convention of .. identifying immediate parent directory).  E.g. the following will move up 1, 2 and 3 directories respectively:
+```sh
+up ..
+up ...
+up ....
+```
+
 And of course, full paths are also supported
 ```sh
 up /dev/proc
