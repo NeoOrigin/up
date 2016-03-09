@@ -118,22 +118,6 @@ EOF
         return $RC
     fi
 
-    # Handle special case characters
-    if [[ "$TARGET" == ".." ]]; then
-        cd .. >/dev/null 2>&1
-        RC=$?
-
-        [[ $RC -ne 0 ]] && printf "%s: %s: %s\n" "$0" "up" "[Cannot access parent directory]" >&2
-
-        if [[ "$VERBOSE" == "true" ]]; then
-            CURRENT_DIR="$PWD"
-            [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
-            printf "%s\n" "$CURRENT_DIR"
-        fi
-
-        return $RC
-    fi
-
     # Print where we are if using `up .` - the equivalent of a do nothing, useful to print out physical path e.g. up -P .
     if [[ "$TARGET" == "." || "$TARGET" == "$CURRENT_DIR" || "$TARGET" == "$PWD" ]]; then
 
@@ -146,7 +130,7 @@ EOF
         return 0
     fi
 
-    # Check if they gave a full path
+    # Check if they gave a valid path
     if [[ -d "$TARGET" ]]; then
         cd "$TARGET" >/dev/null 2>&1
         RC=$?
@@ -198,12 +182,12 @@ EOF
     # index we are using or a named directory to search for 
     # Should also perform better regex matching as characters could appear in the names themselves
     # e.g. up  01-02 could be seen as a relative index
-    IS_NONNUM=$(printf "%s\n" "$TARGET" | tr -d '[0-9]' 2>/dev/null)
+    IS_FIXED=$(printf "%s\n" "$TARGET" | tr -d '[0-9]' 2>/dev/null)
+    PERFORM_NAME_LOOKUP=true
 
+    if [[ -z "$IS_FIXED" ]]; then
 
-    if [[ -z "$IS_NONNUM" ]]; then
-
-        # Fixed index
+        # Fixed index as after deleting numbers there is nothing left
 
         FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
 
@@ -218,10 +202,62 @@ EOF
         # Convert fixed to relative
 
         TARGET=$(( FOLDER_COUNT - TARGET ))
+        PERFORM_NAME_LOOKUP=false
 
-    elif [[ "$TARGET" == "$IS_NONNUM" || "$IS_NONNUM" != "-" ]]; then
+    elif [[ "$IS_FIXED" == "-" ]]; then
 
-        # Named
+        IS_RELATIVE=$(printf "%s\n" "$TARGET" | tr -d '-' 2>/dev/null)
+
+        if [[ "$TARGET" == "-$IS_RELATIVE" ]]; then
+
+            # Relative index
+
+            TARGET=$(printf "%s\n" "$TARGET" | tr -d '-' 2>/dev/null)
+
+            if [[ "$STRICT" == "true" ]]; then
+
+                FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
+                TMP_TARGET=$(( FOLDER_COUNT - TARGET ))
+
+                if [[ "$TMP_TARGET" -lt 0 || "$TMP_TARGET" -gt "$FOLDER_COUNT" ]]; then
+                    printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[Relative index is greater or equal to the current path depth]" >&2
+                    return 2
+                fi
+            fi
+
+            PERFORM_NAME_LOOKUP=false
+
+        fi
+
+    else
+
+        # Check for up ... shortcuts
+
+        IS_SHORTCUT=$(printf "%s\n" "$TARGET" | tr -dc '.' 2>/dev/null | wc -c 2>/dev/null)
+
+        if [[ "$IS_SHORTCUT" -gt 0 ]]; then
+
+            TARGET=$(( IS_SHORTCUT - 1 ))
+
+            if [[ "$STRICT" == "true" ]]; then
+
+                FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
+                if [[ "$TARGET" -lt 0 || "$TARGET" -gt "$FOLDER_COUNT" ]]; then
+                    printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[Number of dot arguments is greater or equal to the current path depth]" >&2
+                    return 2
+                fi
+
+            fi
+
+            PERFORM_NAME_LOOKUP=false
+
+        fi
+
+    fi
+
+    if [[ "$PERFORM_NAME_LOOKUP" == "true" ]]; then
+
+        # Named, as long as a minus character wasnt found
 
         COUNTER=0
         PARENT_PATH=$(dirname "$CURRENT_DIR" 2>/dev/null)
@@ -245,23 +281,6 @@ EOF
         fi
 
         TARGET="$COUNTER"
-
-    else
-
-        # Relative index
-
-        TARGET=$(printf "%s\n" "$TARGET" | tr -d '-' 2>/dev/null)
-
-        if [[ "$STRICT" == "true" ]]; then
-
-            FOLDER_COUNT=$(printf "%s\n" "$CURRENT_DIR" | tr -cd "/" 2>/dev/null | wc -c 2>/dev/null)
-            TMP_TARGET=$(( FOLDER_COUNT - TARGET ))
-
-            if [[ "$TMP_TARGET" -lt 0 || "$TMP_TARGET" -gt "$FOLDER_COUNT" ]]; then
-                printf "%s: %s: %s: %s\n" "$0" "up" "$TARGET" "[Relative index is greater or equal to the current path depth]" >&2
-                return 2
-            fi
-        fi
 
     fi
 
