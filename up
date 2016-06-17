@@ -46,6 +46,7 @@ up()
     STRICT=false
     USE_STDIN=false
     MODE=process
+    USE_BOOKMARKS=false
 
     while [[ $# -gt 0 ]]; do
 
@@ -91,13 +92,24 @@ EOF
             --              ) shift
                               break
                               ;;
-            ++              ) MODE=save
+            ++              ) USE_BOOKMARKS=true
+                              MODE=save
                               break
                               ;;
-            +-              ) MODE=release
+            +-              ) USE_BOOKMARKS=true
+                              MODE=release
                               break
                               ;;
-            @*              ) MODE=lookup
+            +?              ) USE_BOOKMARKS=true
+                              MODE=list
+                              break
+                              ;;
+            +*              ) USE_BOOKMARKS=true
+                              MODE=alias
+                              break
+                              ;;
+            @*              ) USE_BOOKMARKS=true
+                              MODE=lookup
                               break
                               ;;
             *               ) break
@@ -113,36 +125,46 @@ EOF
     # Traverse by the real path, not symbolic links etc
     [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
 
-    if [[ "$MODE" != process ]] && [[ "$MODE" != list ]]; then
-        touch "$UP_BOOKMARKS"
-    fi
+    if [[ "$USE_BOOKMARKS" == "true" ]]; then
     
-    # Check for lookups
-    case "$MODE" in
-    
-        lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
-                  TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | cut -d":" -f2)
-                  ;;
-        save    ) printf "%s:%s" "$(basename $CURRENT_DIR)" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
-                  return $?
-                  ;;
-        release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
-                  grep -v "^$NEW_TARGET:" "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
-                  mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
-                  return $?
-                  ;;
-        pop     ) head -n -1 "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
-                  mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
-                  return $?
-                  ;;
-        clear   ) rm "$UP_BOOKMARKS" && touch "$UP_BOOKMARKS"
-                  return $?
-                  ;;
-        list    ) cat "$UP_BOOKMARKS"
-                  return $?
-                  ;;
+        [[ -z "$UP_BOOKMARKS" ]] && UP_BOOKMARKS=~/.up
         
-    esac
+        if [[ "$MODE" != process ]] && [[ "$MODE" != list ]]; then
+            touch "$UP_BOOKMARKS"
+        fi
+    
+        # Check for lookups
+        case "$MODE" in
+    
+            lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
+                      TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | tail -1 | cut -d":" -f2)
+                      ;;
+            save    ) printf "%s:%s" "$(basename $CURRENT_DIR)" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+            alias   ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
+                      printf "%s:%s" "$(basename $NEW_TARGET)" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+            release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
+                      grep -v "^$NEW_TARGET:" "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
+                      mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+            pop     ) head -n -1 "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
+                      mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+            clear   ) rm "$UP_BOOKMARKS" && touch "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+            list    ) cat "$UP_BOOKMARKS"
+                      return $?
+                      ;;
+        
+        esac
+    
+    fi
     
     # Handle `up` simply running on its own
     if [[ -z "$TARGET" ]]; then
