@@ -25,6 +25,7 @@
 ##
 ##                   Posix Compliant Shell (bash, ksh, zsh etc) 
 ##                   printf
+##                   grep
 ##                   tr
 ##                   dirname
 ##                   basename
@@ -44,6 +45,7 @@ up()
     VERBOSE=false
     STRICT=false
     USE_STDIN=false
+    MODE=process
 
     while [[ $# -gt 0 ]]; do
 
@@ -89,6 +91,15 @@ EOF
             --              ) shift
                               break
                               ;;
+            ++              ) MODE=save
+                              break
+                              ;;
+            +-              ) MODE=release
+                              break
+                              ;;
+            @*              ) MODE=lookup
+                              break
+                              ;;
             *               ) break
                               ;;
 
@@ -98,10 +109,41 @@ EOF
 
     TARGET="$1"
     [[ "$USE_STDIN" == "true" ]] && read TARGET
-
+    
     # Traverse by the real path, not symbolic links etc
     [[ "$USE_PHYSICAL" == "true" ]] && CURRENT_DIR=$(pwd -P 2>/dev/null)
 
+    if [[ "$MODE" != process ]] && [[ "$MODE" != list ]]; then
+        touch "$UP_BOOKMARKS"
+    fi
+    
+    # Check for lookups
+    case "$MODE" in
+    
+        lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
+                  TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | cut -c":" -f2)
+                  ;;
+        save    ) printf "%s:%s" "$(basename '$CURRENT_DIR')" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
+                  return $?
+                  ;;
+        release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
+                  grep -v "^$NEW_TARGET:" "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
+                  mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
+                  return $?
+                  ;;
+        pop     ) head -n -1 "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
+                  mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
+                  return $?
+                  ;;
+        clear   ) rm "$UP_BOOKMARKS" && touch "$UP_BOOKMARKS"
+                  return $?
+                  ;;
+        list    ) cat "$UP_BOOKMARKS"
+                  return $?
+                  ;;
+        
+    esac
+    
     # Handle `up` simply running on its own
     if [[ -z "$TARGET" ]]; then
         cd >/dev/null 2>&1
