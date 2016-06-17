@@ -123,7 +123,7 @@ EOF
         lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
                   TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | cut -c":" -f2)
                   ;;
-        save    ) printf "%s:%s" "$(basename '$CURRENT_DIR')" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
+        save    ) printf "%s:%s" "$(basename $CURRENT_DIR)" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
                   return $?
                   ;;
         release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
