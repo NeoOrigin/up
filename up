@@ -104,6 +104,10 @@ EOF
                               MODE=list
                               break
                               ;;
+            +!              ) USE_BOOKMARKS=true
+                              MODE=clear
+                              break
+                              ;;
             +*              ) USE_BOOKMARKS=true
                               MODE=alias
                               break
@@ -129,9 +133,7 @@ EOF
     
         [[ -z "$UP_BOOKMARKS" ]] && UP_BOOKMARKS=~/.up
         
-        if [[ "$MODE" != process ]] && [[ "$MODE" != list ]]; then
-            touch "$UP_BOOKMARKS"
-        fi
+        [[ "$MODE" != process ]] && [[ "$MODE" != list ]] && touch "$UP_BOOKMARKS"
     
         # Check for lookups
         case "$MODE" in
