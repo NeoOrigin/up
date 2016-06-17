@@ -120,13 +120,13 @@ EOF
     # Check for lookups
     case "$MODE" in
     
-        lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
-                  TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | cut -c":" -f2)
+        lookup  ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
+                  TARGET=$(grep "^$NEW_TARGET:" "$UP_BOOKMARKS" | cut -d":" -f2)
                   ;;
         save    ) printf "%s:%s" "$(basename $CURRENT_DIR)" "$CURRENT_DIR" >> "$UP_BOOKMARKS"
                   return $?
                   ;;
-        release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -c"@" -f2)
+        release ) NEW_TARGET=$(printf "%s" "$TARGET" | cut -d"@" -f2)
                   grep -v "^$NEW_TARGET:" "$UP_BOOKMARKS" >> "$UP_BOOKMARKS.$$"
                   mv "$UP_BOOKMARKS.$$" "$UP_BOOKMARKS"
                   return $?
