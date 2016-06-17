@@ -26,6 +26,32 @@ The following will cd into the first matching parent directory called home
 up home
 ```
 
+With up you can define bookmarks in a text file (configurable with the UP_BOOKMARKS environment variable, value is ~/.up by default). This allows you to save the current directory and cd to it much like how an alias works. For example the following saves the current directory and later goes back
+```sh
+pwd
+/tmp
+
+up ++
+...
+up @tmp
+
+pwd
+/tmp
+```
+
+Or using your own name (mytemp)
+```sh
+pwd
+/tmp
+
+up +mytemp
+...
+up @mytemp
+
+pwd
+/tmp
+```
+
 The following will cd into the parent directory using a relative index
 ```sh
 up -1
