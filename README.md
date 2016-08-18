@@ -1,4 +1,8 @@
 # up
+
+[![GitHub license](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://raw.githubusercontent.com/NeoOrigin/up/master/LICENSE)
+[![GitHub release](https://img.shields.io/github/release/NeoOrigin/up.svg)](https://github.com/NeoOrigin/up/releases/latest)
+
 up is a small posix compatible Shell function that allows you to quickly traverse up a directory path.  
 
 Installation
