@@ -364,7 +364,7 @@ EOF
 
     # Move
     RC=0
-    [[ -n "$CMD" ]] && cd $CMD >/dev/null 2>&1
+    [[ -n "$CMD" ]] && cd "$CMD" >/dev/null 2>&1
 
     RC=$?
     if [[ $RC -eq 0 && "$VERBOSE" == "true" ]]; then
